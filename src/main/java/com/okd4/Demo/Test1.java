@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class Test1 {
 	@GetMapping("/hello")
 	public String hello_func() {
-		return "hello v1 check img 2";
+		return "hello v2 check img 2";
 	}
 }
