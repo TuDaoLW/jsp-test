@@ -61,9 +61,8 @@ pipeline {
                                         sh 'oc new-build --name=spring-boot-app --binary --strategy=source --image=registry.access.redhat.com/ubi8/openjdk-17:latest --to=spring-boot-app:latest'
                                         sh 'oc start-build spring-boot-app --from-dir=. --follow'
                                     } else {
-                                        // Run oc start-build and capture the build name
                                         def buildOutput = sh(script: 'oc start-build spring-boot-app --from-dir=. --wait --output=name', returnStdout: true).trim()
-                                        def buildName = buildOutput ?: 'spring-boot-app-2'  // Fallback if output is empty
+                                        def buildName = buildOutput ?: 'spring-boot-app-2'
                                         echo "Build started: ${buildName}"
                                         sh "oc logs -f ${buildName}"
                                     }
@@ -78,41 +77,41 @@ pipeline {
             steps {
                 container('oc') {
                     script {
-                        openshift.withCluster() {
-                            openshift.withProject('test') {
-                                def dc = openshift.apply(
-                                    openshift.raw(
-                                        "kind": "DeploymentConfig",
-                                        "apiVersion": "v1",
-                                        "metadata": ["name": "spring-boot-app"],
-                                        "spec": [
-                                            "replicas": 1,
-                                            "selector": ["app": "spring-boot-app"],
-                                            "triggers": [[
-                                                "type": "ImageChange",
-                                                "imageChangeParams": [
-                                                    "automatic": true,
-                                                    "containerNames": ["spring-boot-app"],
-                                                    "from": ["kind": "ImageStreamTag", "name": "spring-boot-app:latest"]
-                                                ]
-                                            ]],
-                                            "template": [
-                                                "metadata": ["labels": ["app": "spring-boot-app"]],
-                                                "spec": [
-                                                    "containers": [[
-                                                        "name": "spring-boot-app",
-                                                        "image": "spring-boot-app:latest",
-                                                        "ports": [["containerPort": 8080, "protocol": "TCP"]]
-                                                    ]]
-                                                ]
-                                            ]
-                                        ]
-                                    )
-                                )
-                                dc.rollout().latest()
-                                dc.rollout().status()
-                            }
-                        }
+                        // Write DeploymentConfig to a file
+                        writeFile file: 'dc.yaml', text: '''
+                        apiVersion: v1
+                        kind: DeploymentConfig
+                        metadata:
+                          name: spring-boot-app
+                        spec:
+                          replicas: 1
+                          selector:
+                            app: spring-boot-app
+                          triggers:
+                          - type: ImageChange
+                            imageChangeParams:
+                              automatic: true
+                              containerNames:
+                              - spring-boot-app
+                              from:
+                                kind: ImageStreamTag
+                                name: spring-boot-app:latest
+                          template:
+                            metadata:
+                              labels:
+                                app: spring-boot-app
+                            spec:
+                              containers:
+                              - name: spring-boot-app
+                                image: spring-boot-app:latest
+                                ports:
+                                - containerPort: 8080
+                                  protocol: TCP
+                        '''
+                        // Apply and rollout
+                        sh 'oc apply -f dc.yaml -n test'
+                        sh 'oc rollout latest dc/spring-boot-app -n test'
+                        sh 'oc rollout status dc/spring-boot-app -n test'
                     }
                 }
             }
