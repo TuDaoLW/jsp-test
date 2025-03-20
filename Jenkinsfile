@@ -39,7 +39,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm  // Automatically clones the repo with the Jenkinsfile
+                checkout scm
             }
         }
         stage('Build') {
@@ -56,14 +56,22 @@ pipeline {
                         script {
                             openshift.withCluster() {
                                 openshift.withProject('test') {
-                                    def buildConfig = openshift.newBuild(
-                                        "--name=spring-boot-app",
-                                        "--binary",
-                                        "--strategy=source",
-                                        "--image=registry.access.redhat.com/ubi8/openjdk-17:latest",
-                                        "--to=spring-boot-app:latest"
-                                    )
-                                    buildConfig.logs('-f')
+                                    def bcExists = openshift.selector('buildconfig/spring-boot-app').exists()
+                                    if (!bcExists) {
+                                        // Create BuildConfig if it doesn’t exist
+                                        def buildConfig = openshift.newBuild(
+                                            "--name=spring-boot-app",
+                                            "--binary",
+                                            "--strategy=source",
+                                            "--image=registry.access.redhat.com/ubi8/openjdk-17:latest",
+                                            "--to=spring-boot-app:latest"
+                                        )
+                                        buildConfig.logs('-f')
+                                    } else {
+                                        // Start the existing BuildConfig
+                                        def build = openshift.startBuild('spring-boot-app', '--from-dir=.')
+                                        build.logs('-f')
+                                    }
                                 }
                             }
                         }
