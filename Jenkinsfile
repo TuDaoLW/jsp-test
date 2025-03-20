@@ -57,21 +57,16 @@ pipeline {
                             openshift.withCluster() {
                                 openshift.withProject('test') {
                                     def bcExists = openshift.selector('buildconfig/spring-boot-app').exists()
-                                    def build
                                     if (!bcExists) {
-                                        build = openshift.newBuild(
-                                            "--name=spring-boot-app",
-                                            "--binary",
-                                            "--strategy=source",
-                                            "--image=registry.access.redhat.com/ubi8/openjdk-17:latest",
-                                            "--to=spring-boot-app:latest"
-                                        )
+                                        sh 'oc new-build --name=spring-boot-app --binary --strategy=source --image=registry.access.redhat.com/ubi8/openjdk-17:latest --to=spring-boot-app:latest'
+                                        sh 'oc start-build spring-boot-app --from-dir=. --follow'
                                     } else {
-                                        build = openshift.startBuild('spring-boot-app', '--from-dir=.')
+                                        // Run oc start-build and capture the build name
+                                        def buildOutput = sh(script: 'oc start-build spring-boot-app --from-dir=. --wait --output=name', returnStdout: true).trim()
+                                        def buildName = buildOutput ?: 'spring-boot-app-2'  // Fallback if output is empty
+                                        echo "Build started: ${buildName}"
+                                        sh "oc logs -f ${buildName}"
                                     }
-                                    // Get the build name and tail logs manually
-                                    def buildName = build.name()
-                                    sh "oc logs -f ${buildName}"
                                 }
                             }
                         }
