@@ -57,21 +57,21 @@ pipeline {
                             openshift.withCluster() {
                                 openshift.withProject('test') {
                                     def bcExists = openshift.selector('buildconfig/spring-boot-app').exists()
+                                    def build
                                     if (!bcExists) {
-                                        // Create BuildConfig if it doesn’t exist
-                                        def buildConfig = openshift.newBuild(
+                                        build = openshift.newBuild(
                                             "--name=spring-boot-app",
                                             "--binary",
                                             "--strategy=source",
                                             "--image=registry.access.redhat.com/ubi8/openjdk-17:latest",
                                             "--to=spring-boot-app:latest"
                                         )
-                                        buildConfig.logs('-f')
                                     } else {
-                                        // Start the existing BuildConfig
-                                        def build = openshift.startBuild('spring-boot-app', '--from-dir=.')
-                                        build.logs('-f')
+                                        build = openshift.startBuild('spring-boot-app', '--from-dir=.')
                                     }
+                                    // Get the build name and tail logs manually
+                                    def buildName = build.name()
+                                    sh "oc logs -f ${buildName}"
                                 }
                             }
                         }
