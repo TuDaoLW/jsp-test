@@ -77,9 +77,9 @@ pipeline {
             steps {
                 container('oc') {
                     script {
-                        // Write DeploymentConfig to a file
+                        // Write DeploymentConfig with correct apiVersion
                         writeFile file: 'dc.yaml', text: '''
-                        apiVersion: v1
+                        apiVersion: apps.openshift.io/v1
                         kind: DeploymentConfig
                         metadata:
                           name: spring-boot-app
