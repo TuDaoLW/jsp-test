@@ -89,8 +89,7 @@ pipeline {
                       -Dsonar.exclusions=target/** \
                       -Dsonar.java.binaries=target/classes \
                       -Dsonar.scm.disabled=true \
-                      -Dsonar.host.url= \
-                      -Dsonar.scanner.skipUpload=true
+                      -Dsonar.log.level=DEBUG
                     '''
                 }
             }
