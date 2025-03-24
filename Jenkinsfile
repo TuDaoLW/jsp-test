@@ -82,15 +82,19 @@ pipeline {
         stage('Security Check') {
             steps {
                 container('sonar') {
-                    sh '''
-                    sonar-scanner \
-                      -Dsonar.projectKey=demo-app \
-                      -Dsonar.sources=. \
-                      -Dsonar.exclusions=target/** \
-                      -Dsonar.java.binaries=target/classes \
-                      -Dsonar.scm.disabled=true \
-                      -Dsonar.log.level=DEBUG
-                    '''
+                    script {
+                        // Write a minimal sonar-project.properties for standalone analysis
+                        writeFile file: 'sonar-project.properties', text: '''
+                        sonar.projectKey=demo-app
+                        sonar.sources=.
+                        sonar.exclusions=target/**
+                        sonar.java.binaries=target/classes
+                        sonar.scm.disabled=true
+                        sonar.log.level=DEBUG
+                        '''
+                        // Run sonar-scanner with no server args
+                        sh 'sonar-scanner'
+                    }
                 }
             }
         }
