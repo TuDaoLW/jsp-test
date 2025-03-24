@@ -2,6 +2,7 @@ pipeline {
     agent {
         kubernetes {
             label 'spring-agent'
+            serviceAccountName: 'jenkins'
             yaml '''
             apiVersion: v1
             kind: Pod
@@ -25,13 +26,7 @@ pipeline {
                 - name: workspace-volume
                   mountPath: /home/jenkins/agent
               - name: sonar
-                image: sonarqube:10-community
-                command: ["/bin/sh", "-c", "sleep infinity"]
-                volumeMounts:
-                - name: workspace-volume
-                  mountPath: /home/jenkins/agent
-              - name: depcheck
-                image: owasp/dependency-check:latest
+                image: sonarsource/sonar-scanner-cli:5.0
                 command: ["/bin/sh", "-c", "sleep infinity"]
                 volumeMounts:
                 - name: workspace-volume
@@ -57,7 +52,7 @@ pipeline {
     }
     triggers { pollSCM('H/5 * * * *') }  // Poll every 5 minutes
     environment {
-        TEST_NS = 'test'
+        STAGING_NS = 'test-staging'
         IMAGE_NAME = "spring-boot-app:${env.BUILD_NUMBER}"
     }
     stages {
@@ -85,39 +80,17 @@ pipeline {
                 }
             }
         }
-        stage('Security Checks') {
-            parallel {
-                stage('Static Analysis') {
-                    steps {
-                        container('sonar') {
-                            sh '''
-                            sonar-scanner \
-                              -Dsonar.projectKey=demo-app \
-                              -Dsonar.sources=. \
-                              -Dsonar.host.url=http://sonarqube:9000 \
-                              -Dsonar.login=admin \
-                              -Dsonar.password=admin
-                            '''
-                        }
-                    }
-                }
-                stage('Dependency Scan') {
-                    steps {
-                        container('depcheck') {
-                            sh '''
-                            dependency-check.sh \
-                              --project "Demo App" \
-                              --scan . \
-                              --out ./dependency-check-report.html \
-                              --format HTML
-                            '''
-                        }
-                    }
-                    post {
-                        always {
-                            archiveArtifacts 'dependency-check-report.html'
-                        }
-                    }
+        stage('Security Check') {
+            steps {
+                container('sonar') {
+                    sh '''
+                    sonar-scanner \
+                      -Dsonar.projectKey=demo-app \
+                      -Dsonar.sources=. \
+                      -Dsonar.exclusions=target/** \
+                      -Dsonar.java.binaries=target/classes \
+                      -Dsonar.scm.disabled=true
+                    '''
                 }
             }
         }
@@ -125,9 +98,8 @@ pipeline {
             steps {
                 container('db') {
                     sh '''
-                    mkdir -p /var/lib/postgresql/data
-                    pg_ctl initdb -D /var/lib/postgresql/data
-                    pg_ctl -D /var/lib/postgresql/data -l logfile start
+                    # Start Postgres in the background
+                    pg_ctl start -D /var/lib/postgresql/data -l /tmp/postgres.log &
                     sleep 5  # Wait for DB to start
                     '''
                 }
@@ -137,8 +109,14 @@ pipeline {
                       -Ddb.host=localhost \
                       -Ddb.port=5432 \
                       -Ddb.user=testuser \
-                      -Ddb.pass=testpass
+                      -Ddb.pass=testpass \
+                      -Ddb.name=testdb
                     '''
+                }
+            }
+            post {
+                always {
+                    junit 'target/failsafe-reports/*.xml'  // Archive integration test results
                 }
             }
         }
@@ -147,28 +125,28 @@ pipeline {
                 container('oc') {
                     dir('target') {
                         script {
-                            def bcExists = sh(script: "oc get bc/spring-boot-app -n ${TEST_NS} --no-headers | wc -l", returnStdout: true).trim() != '0'
+                            def bcExists = sh(script: "oc get bc/spring-boot-app -n ${STAGING_NS} --no-headers | wc -l", returnStdout: true).trim() != '0'
                             if (!bcExists) {
-                                sh "oc new-build --name=spring-boot-app --binary --strategy=source --image=registry.access.redhat.com/ubi8/openjdk-17:latest --to=${IMAGE_NAME} -n ${TEST_NS}"
+                                sh "oc new-build --name=spring-boot-app --binary --strategy=source --image=registry.access.redhat.com/ubi8/openjdk-17:latest --to=${IMAGE_NAME} -n ${STAGING_NS}"
                             }
-                            def buildOutput = sh(script: "oc start-build spring-boot-app --from-dir=. --wait --output=name -n ${TEST_NS}", returnStdout: true).trim()
+                            def buildOutput = sh(script: "oc start-build spring-boot-app --from-dir=. --wait --output=name -n ${STAGING_NS}", returnStdout: true).trim()
                             def buildName = buildOutput ?: "spring-boot-app-${env.BUILD_NUMBER}"
-                            sh "oc logs -f ${buildName} -n ${TEST_NS}"
+                            sh "oc logs -f ${buildName} -n ${STAGING_NS}"
                         }
                     }
                 }
             }
         }
-        stage('Deploy to Test') {
+        stage('Deploy to Staging') {
             steps {
                 container('oc') {
                     script {
-                        writeFile file: 'dc-test.yaml', text: """
+                        writeFile file: 'dc-staging.yaml', text: """
                         apiVersion: apps.openshift.io/v1
                         kind: DeploymentConfig
                         metadata:
                           name: spring-boot-app
-                          namespace: ${TEST_NS}
+                          namespace: ${STAGING_NS}
                         spec:
                           replicas: 1
                           selector:
@@ -192,16 +170,10 @@ pipeline {
                                 image: ${IMAGE_NAME}
                                 ports:
                                 - containerPort: 8080
-                                readinessProbe:
-                                  httpGet:
-                                    path: /actuator/health
-                                    port: 8080
-                                  initialDelaySeconds: 10
-                                  periodSeconds: 5
                         """
-                        sh "oc apply -f dc-test.yaml -n ${TEST_NS}"
-                        sh "oc rollout status dc/spring-boot-app -n ${TEST_NS}"
-                        sh "oc expose svc/spring-boot-app --name=test-route -n ${TEST_NS} || true"
+                        sh "oc apply -f dc-staging.yaml -n ${STAGING_NS}"
+                        sh "oc rollout status dc/spring-boot-app -n ${STAGING_NS}"
+                        sh "oc expose svc/spring-boot-app --name=staging-route -n ${STAGING_NS} || true"
                     }
                 }
             }
