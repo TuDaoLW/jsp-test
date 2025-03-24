@@ -53,7 +53,7 @@ pipeline {
     environment {
         STAGING_NS = 'test'
         IMAGE_NAME = "spring-boot-app:${env.BUILD_NUMBER}"
-        SONAR_HOST = 'sonarqube-sonarqube:9000'  // Adjust to your SonarQube URL
+        SONAR_HOST = 'http://sonarqube-sonarqube:9000'  // Adjust to your SonarQube URL
         SONAR_TOKEN = 'squ_6c37c7c9f34cb371b30dd8d4b53d73d0272630d2'  // Store token in Jenkins credentials
     }
     stages {
