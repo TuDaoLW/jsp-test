@@ -53,6 +53,8 @@ pipeline {
     environment {
         STAGING_NS = 'test'
         IMAGE_NAME = "spring-boot-app:${env.BUILD_NUMBER}"
+        SONAR_HOST = 'http://sonarqube.apps.okd4.elc.com/'  // Adjust to your SonarQube URL
+        SONAR_TOKEN = credentials('squ_6c37c7c9f34cb371b30dd8d4b53d73d0272630d2')  // Store token in Jenkins credentials
     }
     stages {
         stage('Checkout') {
@@ -75,26 +77,22 @@ pipeline {
             }
             post {
                 always {
-                    junit 'target/surefire-reports/*.xml'  // Archive test results
+                    junit 'target/surefire-reports/*.xml'
                 }
             }
         }
         stage('Security Check') {
             steps {
                 container('sonar') {
-                    script {
-                        // Write a minimal sonar-project.properties for standalone analysis
-                        writeFile file: 'sonar-project.properties', text: '''
-                        sonar.projectKey=demo-app
-                        sonar.sources=.
-                        sonar.exclusions=target/**
-                        sonar.java.binaries=target/classes
-                        sonar.scm.disabled=true
-                        sonar.log.level=DEBUG
-                        '''
-                        // Run sonar-scanner with no server args
-                        sh 'sonar-scanner'
-                    }
+                    sh """
+                    sonar-scanner \
+                      -Dsonar.projectKey=demo-app \
+                      -Dsonar.sources=. \
+                      -Dsonar.exclusions=target/** \
+                      -Dsonar.java.binaries=target/classes \
+                      -Dsonar.host.url=${SONAR_HOST} \
+                      -Dsonar.token=${SONAR_TOKEN}
+                    """
                 }
             }
         }
@@ -102,9 +100,8 @@ pipeline {
             steps {
                 container('db') {
                     sh '''
-                    # Start Postgres in the background
                     pg_ctl start -D /var/lib/postgresql/data -l /tmp/postgres.log &
-                    sleep 5  # Wait for DB to start
+                    sleep 5
                     '''
                 }
                 container('maven') {
@@ -120,7 +117,7 @@ pipeline {
             }
             post {
                 always {
-                    junit 'target/failsafe-reports/*.xml'  // Archive integration test results
+                    junit 'target/failsafe-reports/*.xml'
                 }
             }
         }
