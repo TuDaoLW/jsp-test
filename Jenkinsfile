@@ -2,7 +2,6 @@ pipeline {
     agent {
         kubernetes {
             label 'spring-agent'
-            serviceAccountName: 'jenkins'
             yaml '''
             apiVersion: v1
             kind: Pod
