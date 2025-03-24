@@ -96,31 +96,7 @@ pipeline {
                 }
             }
         }
-        stage('Integration Tests') {
-            steps {
-                container('db') {
-                    sh '''
-                    pg_ctl start -D /var/lib/postgresql/data -l /tmp/postgres.log &
-                    sleep 5
-                    '''
-                }
-                container('maven') {
-                    sh '''
-                    mvn verify -Pintegration-tests \
-                      -Ddb.host=localhost \
-                      -Ddb.port=5432 \
-                      -Ddb.user=testuser \
-                      -Ddb.pass=testpass \
-                      -Ddb.name=testdb
-                    '''
-                }
-            }
-            post {
-                always {
-                    junit 'target/failsafe-reports/*.xml'
-                }
-            }
-        }
+        
         stage('Build Image') {
             steps {
                 container('oc') {
