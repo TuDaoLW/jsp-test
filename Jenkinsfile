@@ -51,7 +51,7 @@ pipeline {
     }
     triggers { pollSCM('H/5 * * * *') }  // Poll every 5 minutes
     environment {
-        STAGING_NS = 'test-staging'
+        STAGING_NS = 'test'
         IMAGE_NAME = "spring-boot-app:${env.BUILD_NUMBER}"
     }
     stages {
