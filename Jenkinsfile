@@ -2,6 +2,8 @@ pipeline {
     agent {
         kubernetes {
             label 'spring-agent'
+            serviceAccountName: 'jenkins'  // Uses jenkins-ns:jenkins
+            namespace: 'kube-system'        // Run pod in jenkins-ns
             yaml '''
             apiVersion: v1
             kind: Pod
@@ -53,8 +55,8 @@ pipeline {
     environment {
         STAGING_NS = 'test'
         IMAGE_NAME = "spring-boot-app:${env.BUILD_NUMBER}"
-        SONAR_HOST = 'http://sonarqube-sonarqube:9000'  // Adjust to your SonarQube URL
-        SONAR_TOKEN = 'squ_6c37c7c9f34cb371b30dd8d4b53d73d0272630d2'  // Store token in Jenkins credentials
+        SONAR_HOST = 'http://sonarqube-sonarqube.kube-system.svc:9000'  // Adjust to your SonarQube URL
+        SONAR_TOKEN = 'squ_dc4b4d10d93c2dfd06a3df225a865497663d2bcb'  // Store token in Jenkins credentials
     }
     stages {
         stage('Checkout') {
