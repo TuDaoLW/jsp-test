@@ -69,6 +69,10 @@ spec:
         }
     }
      stage('Build & Push Image (Buildah)') {
+        environment {
+          IMAGE_TAG = "$DOCKERHUB_USR/test:${env.BUILD_NUMBER}"
+        }
+
       steps {
         container('buildah') {
           sh '''
