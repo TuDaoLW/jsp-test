@@ -24,6 +24,10 @@ spec:
       tty: true
       securityContext:
         privileged: true
+    - name: trivy
+      image: aquasec/trivy:0.51.1
+      command: ['cat']
+      tty: true
   volumes:
     - name: maven-cache
       persistentVolumeClaim:
@@ -68,7 +72,7 @@ spec:
           }
         }
     }
-     stage('Build & Push Image (Buildah)') {
+    stage('Build & Push Image (Buildah)') {
         environment {
           IMAGE_TAG = "$DOCKERHUB_USR/test:${env.BUILD_NUMBER}"
         }
@@ -85,6 +89,18 @@ spec:
         }
       }
     }
+stage('Scan Image with Trivy') {
+  steps {
+    container('trivy') {
+      sh '''
+        trivy image --severity CRITICAL,HIGH \
+          --exit-code 1 \
+          docker.io/$IMAGE_TAG || true
+      '''
+    }
+  }
+}
+
   }
 
 }
