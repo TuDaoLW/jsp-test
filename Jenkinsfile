@@ -20,8 +20,6 @@ spec:
           mountPath: /root/.m2
     - name: kaniko
       image: gcr.io/kaniko-project/executor:latest
-      tty: true
-      command: ['sleep', 'infinity']
   volumes:
     - name: maven-cache
       persistentVolumeClaim:
@@ -79,7 +77,7 @@ stage('Build Docker Image with Kaniko') {
 
         /kaniko/executor \
           --dockerfile=Dockerfile \
-          --context=`pwd` \
+          --context=dir://$(pwd) \
           --destination=$IMAGE \
           --destination=docker.io/$DOCKERHUB_USR/test:latest \
           --skip-tls-verify
