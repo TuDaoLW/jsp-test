@@ -93,7 +93,7 @@ stage('Scan Image with Trivy') {
   steps {
     container('trivy') {
       sh '''
-        ping -c 4 youtube.com
+        ping -c 4 www.youtube.com
         trivy image --severity CRITICAL,HIGH \
           --exit-code 1 \
           docker.io/tudaolw/test:8 || true
