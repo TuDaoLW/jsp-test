@@ -20,6 +20,11 @@ spec:
           mountPath: /root/.m2
     - name: kaniko
       image: gcr.io/kaniko-project/executor:latest
+      command:
+        - /busybox/sh
+      args:
+        - -c
+        - "while true; do sleep 30; done"
   volumes:
     - name: maven-cache
       persistentVolumeClaim:
