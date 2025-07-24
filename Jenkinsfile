@@ -76,6 +76,8 @@ spec:
       steps {
         container('buildah') {
           sh '''
+            pwd
+            ls -la
             echo "$DOCKERHUB_PSW" | buildah login -u "$DOCKERHUB_USR" --password-stdin docker.io
             buildah bud -t docker.io/$IMAGE_TAG .
             buildah push docker.io/$IMAGE_TAG
