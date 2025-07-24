@@ -18,6 +18,10 @@ spec:
       volumeMounts:
         - name: maven-cache
           mountPath: /root/.m2
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:latest
+      tty: true
+      command: ['sleep', 'infinity']
   volumes:
     - name: maven-cache
       persistentVolumeClaim:
@@ -31,6 +35,7 @@ spec:
     SONAR_PROJECT_KEY = 'demo-scan'
     SONAR_PROJECT_NAME = 'demo-scan'
     SONAR_TOKEN = credentials('sonar-token')
+    DOCKERHUB = credentials('dockerhub')
     }
 
   stages {
@@ -61,6 +66,29 @@ spec:
           }
         }
     }
+stage('Build Docker Image with Kaniko') {
+  environment {
+    IMAGE = "docker.io/${DOCKERHUB_USR}/test:${BUILD_NUMBER}"
+  }
+  steps {
+    container('kaniko') {
+      sh '''
+        echo $DOCKERHUB_USR
+        echo $DOCKERHUB_PSW
+        echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"username\":\"$DOCKERHUB_USR\",\"password\":\"$DOCKERHUB_PSW\"}}}" > /kaniko/.docker/config.json
+
+        /kaniko/executor \
+          --dockerfile=Dockerfile \
+          --context=`pwd` \
+          --destination=$IMAGE \
+          --destination=docker.io/$DOCKERHUB_USR/test:latest \
+          --skip-tls-verify
+      '''
+    }
+  }
+}
+
+
   }
 
 }
