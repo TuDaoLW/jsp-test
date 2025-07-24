@@ -84,7 +84,7 @@ spec:
             ls -la
             echo "$DOCKERHUB_PSW" | buildah login -u "$DOCKERHUB_USR" --password-stdin docker.io
             buildah bud -t docker.io/$IMAGE_TAG .
-            buildah push docker.io/$IMAGE_TAG
+            #buildah push docker.io/$IMAGE_TAG
           '''
         }
       }
@@ -93,6 +93,7 @@ stage('Scan Image with Trivy') {
   steps {
     container('trivy') {
       sh '''
+        ping -c 4 youtube.com
         trivy image --severity CRITICAL,HIGH \
           --exit-code 1 \
           docker.io/$IMAGE_TAG || true
