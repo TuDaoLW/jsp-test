@@ -96,7 +96,7 @@ stage('Scan Image with Trivy') {
         ping -c 4 youtube.com
         trivy image --severity CRITICAL,HIGH \
           --exit-code 1 \
-          docker.io/$IMAGE_TAG || true
+          docker.io/tudaolw/test:8 || true
       '''
     }
   }
