@@ -18,13 +18,12 @@ spec:
       volumeMounts:
         - name: maven-cache
           mountPath: /root/.m2
-    - name: kaniko
-      image: gcr.io/kaniko-project/executor:latest
-      command:
-        - /busybox/sh
-      args:
-        - -c
-        - "while true; do sleep 30; done"
+    - name: buildah
+      image: quay.io/buildah/stable
+      command: ['cat']
+      tty: true
+      securityContext:
+        privileged: true
   volumes:
     - name: maven-cache
       persistentVolumeClaim:
@@ -69,29 +68,17 @@ spec:
           }
         }
     }
-stage('Build Docker Image with Kaniko') {
-  environment {
-    IMAGE = "docker.io/${DOCKERHUB_USR}/test:${BUILD_NUMBER}"
-  }
-  steps {
-    container('kaniko') {
-      sh '''
-        echo $DOCKERHUB_USR
-        echo $DOCKERHUB_PSW
-        echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"username\":\"$DOCKERHUB_USR\",\"password\":\"$DOCKERHUB_PSW\"}}}" > /kaniko/.docker/config.json
-
-        /kaniko/executor \
-          --dockerfile=Dockerfile \
-          --context=dir://$(pwd) \
-          --destination=$IMAGE \
-          --destination=docker.io/$DOCKERHUB_USR/test:latest \
-          --skip-tls-verify
-      '''
+     stage('Build & Push Image (Buildah)') {
+      steps {
+        container('buildah') {
+          sh '''
+            echo "$DOCKERHUB_PSW" | buildah login -u "$DOCKERHUB_USR" --password-stdin docker.io
+            buildah bud -t docker.io/$IMAGE_TAG .
+            buildah push docker.io/$IMAGE_TAG
+          '''
+        }
+      }
     }
-  }
-}
-
-
   }
 
 }
