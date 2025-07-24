@@ -41,6 +41,16 @@ spec:
         }
       }
     }
+    stage('SonarQube Analysis') {
+      steps {
+        container('maven') {
+          withSonarQubeEnv('SonarQube') {
+            sh 'mvn sonar:sonar -Dsonar.projectKey=demo-scan -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_AUTH_TOKEN'
+          }
+        }
+      }
+    }
+
   }
 }
 
