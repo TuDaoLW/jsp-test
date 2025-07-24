@@ -26,6 +26,13 @@ spec:
       defaultContainer 'maven'
     }
   }
+  environment {
+    SONAR_HOST_URL = 'http://sonarqube1.local'
+    SONAR_PROJECT_KEY = 'demo-scan'
+    SONAR_PROJECT_NAME = 'demo-scan'
+    SONAR_TOKEN = credentials('sonar-token')
+    }
+
   stages {
     stage('Checkout') {
       steps {
@@ -44,13 +51,17 @@ spec:
     stage('SonarQube Analysis') {
       steps {
         container('maven') {
-          withSonarQubeEnv('SonarQube') {
-            sh 'mvn sonar:sonar -Dsonar.projectKey=demo-scan -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_AUTH_TOKEN'
+          sh """
+              mvn clean verify sonar:sonar \
+                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                -Dsonar.projectName='${SONAR_PROJECT_NAME}' \
+                -Dsonar.host.url=${SONAR_HOST_URL} \
+                -Dsonar.token=${SONAR_TOKEN}
+            """
           }
         }
-      }
     }
-
   }
+
 }
 
