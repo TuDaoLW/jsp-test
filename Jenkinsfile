@@ -37,7 +37,7 @@ spec:
     }
   }
   environment {
-    SONAR_HOST_URL = 'http://sonarqube-sonarqube.sonaqube.svc.cluster.local:9000'
+    SONAR_HOST_URL = 'http://sonarqube1.local'
     SONAR_PROJECT_KEY = 'demo-scan'
     SONAR_PROJECT_NAME = 'demo-scan'
     SONAR_TOKEN = credentials('sonar-token')
@@ -93,7 +93,6 @@ stage('Scan Image with Trivy') {
   steps {
     container('trivy') {
       sh '''
-        #ping -c 4 www.youtube.com
         trivy image --severity CRITICAL,HIGH \
           --exit-code 1 \
           docker.io/tudaolw/test:8 || true
