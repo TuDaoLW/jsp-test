@@ -37,7 +37,7 @@ spec:
     }
   }
   environment {
-    SONAR_HOST_URL = 'http://sonarqube1.local'
+    SONAR_HOST_URL = 'http://sonarqube-sonarqube.sonaqube.svc.cluster.local:9000'
     SONAR_PROJECT_KEY = 'demo-scan'
     SONAR_PROJECT_NAME = 'demo-scan'
     SONAR_TOKEN = credentials('sonar-token')
@@ -62,8 +62,7 @@ spec:
     stage('SonarQube Analysis') {
       steps {
         container('maven') {
-          sh """
-              nslookup ${SONAR_HOST_URL}
+          sh """             
               mvn clean verify sonar:sonar \
                 -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                 -Dsonar.projectName='${SONAR_PROJECT_NAME}' \
