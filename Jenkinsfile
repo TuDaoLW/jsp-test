@@ -63,7 +63,7 @@ spec:
       steps {
         container('maven') {
           sh """
-              ping -c 4 ${SONAR_HOST_URL}
+              nslookup ${SONAR_HOST_URL}
               mvn clean verify sonar:sonar \
                 -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                 -Dsonar.projectName='${SONAR_PROJECT_NAME}' \
