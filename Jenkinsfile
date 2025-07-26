@@ -37,7 +37,7 @@ spec:
     }
   }
   environment {
-    SONAR_HOST_URL = 'https://sonarqube.k3s.com'
+    SONAR_HOST_URL = 'http://sonarqube-sonarqube.sonarqube.svc.cluster.local:9000'
     SONAR_PROJECT_KEY = 'demo-scan'
     SONAR_PROJECT_NAME = 'demo-scan'
     SONAR_TOKEN = credentials('sonar-token')
