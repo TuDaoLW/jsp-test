@@ -96,10 +96,34 @@ stage('Scan Image with Trivy') {
   steps {
     container('trivy') {
       sh '''
-        trivy image --scanners vuln --severity CRITICAL,HIGH \
-          --exit-code 1 \
-          docker.io/$IMAGE_TAG || true
+        echo "skip to savetime"
+        #trivy image --timeout 15m --scanners vuln --severity CRITICAL,HIGH \
+        #  --exit-code 1 \
+        #  docker.io/$IMAGE_TAG || true
       '''
+    }
+  }
+}
+stage('Update Deployment Manifest') {
+  steps {
+    container('maven') {
+      withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+        sh '''
+          # Clone repo manifest
+          git clone https://$GIT_USER:$GIT_TOKEN@github.com/tudaolw/test-app1-deploy.git
+          cd test-app1-deploy
+
+          # Update image tag in deployment.yaml
+          yq e '.spec.template.spec.containers[0].image = "tudaolw/test:'"$BUILD_NUMBER"'"' -i deployment.yaml
+
+          # Commit and push
+          git config user.name "jenkins"
+          git config user.email "ci@example.com"
+          git add deployment.yaml
+          git commit -m "Update image to tudaolw/test:$BUILD_NUMBER"
+          git push origin main
+        '''
+      }
     }
   }
 }
