@@ -28,10 +28,16 @@ spec:
       image: aquasec/trivy:0.51.1
       command: ['cat']
       tty: true
+      volumeMounts:
+        - name: trivy-cache
+          mountPath: /root/.cache/trivy
   volumes:
     - name: maven-cache
       persistentVolumeClaim:
         claimName: maven-cache-pvc
+    - name: trivy-cache
+      persistentVolumeClaim:
+        claimName: trivy-cache-pvc
 """
       defaultContainer 'maven'
     }
