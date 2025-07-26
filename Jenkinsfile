@@ -107,7 +107,7 @@ stage('Scan Image with Trivy') {
 stage('Update Deployment Manifest') {
   steps {
     container('maven') {
-      withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+      withCredentials([usernamePassword(credentialsId: 'github-tokem', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
         sh '''
           # Clone repo manifest
           git clone https://$GIT_USER:$GIT_TOKEN@github.com/tudaolw/test-app1-deploy.git
