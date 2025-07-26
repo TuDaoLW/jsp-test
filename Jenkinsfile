@@ -37,7 +37,7 @@ spec:
     }
   }
   environment {
-    SONAR_HOST_URL = 'http://sonarqube1.local'
+    SONAR_HOST_URL = 'https://sonarqube.k3s.com'
     SONAR_PROJECT_KEY = 'demo-scan'
     SONAR_PROJECT_NAME = 'demo-scan'
     SONAR_TOKEN = credentials('sonar-token')
@@ -84,7 +84,7 @@ spec:
             ls -la
             echo "$DOCKERHUB_PSW" | buildah login -u "$DOCKERHUB_USR" --password-stdin docker.io
             buildah bud -t docker.io/$IMAGE_TAG .
-            #buildah push docker.io/$IMAGE_TAG
+            buildah push docker.io/$IMAGE_TAG
           '''
         }
       }
@@ -95,7 +95,7 @@ stage('Scan Image with Trivy') {
       sh '''
         trivy image --severity CRITICAL,HIGH \
           --exit-code 1 \
-          docker.io/tudaolw/test:8 || true
+          docker.io/$IMAGE_TAG || true
       '''
     }
   }
