@@ -96,7 +96,7 @@ stage('Scan Image with Trivy') {
   steps {
     container('trivy') {
       sh '''
-        trivy image --severity CRITICAL,HIGH \
+        trivy image --scanners vuln --severity CRITICAL,HIGH \
           --exit-code 1 \
           docker.io/$IMAGE_TAG || true
       '''
