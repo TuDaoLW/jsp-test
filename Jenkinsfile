@@ -42,6 +42,7 @@ spec:
     SONAR_PROJECT_NAME = 'demo-scan'
     SONAR_TOKEN = credentials('sonar-token')
     DOCKERHUB = credentials('dockerhub')
+    IMAGE_TAG = "$DOCKERHUB_USR/test:${env.BUILD_NUMBER}"
     }
 
   stages {
@@ -73,10 +74,6 @@ spec:
         }
     }
     stage('Build & Push Image (Buildah)') {
-        environment {
-          IMAGE_TAG = "$DOCKERHUB_USR/test:${env.BUILD_NUMBER}"
-        }
-
       steps {
         container('buildah') {
           sh '''
@@ -93,7 +90,6 @@ stage('Scan Image with Trivy') {
   steps {
     container('trivy') {
       sh '''
-        echo $IMAGE_TAG
         trivy image --severity CRITICAL,HIGH \
           --exit-code 1 \
           docker.io/$IMAGE_TAG || true
