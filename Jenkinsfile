@@ -131,7 +131,7 @@ stage('Update manifest repo') {
 
           git add deployment.yaml
           git commit -m "Update image tag to $BUILD_NUMBER"
-          git push origin master
+          git push origin main
         '''
       }
     }
