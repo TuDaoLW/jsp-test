@@ -31,6 +31,10 @@ spec:
       volumeMounts:
         - name: trivy-cache
           mountPath: /root/.cache/trivy
+    - name: gitops
+      image: alpine/git
+      command: ['sh', '-c', 'apk add --no-cache curl bash && curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/bin/yq && chmod +x /usr/bin/yq && cat']
+      tty: true
   volumes:
     - name: maven-cache
       persistentVolumeClaim:
@@ -104,24 +108,30 @@ stage('Scan Image with Trivy') {
     }
   }
 }
-stage('Update Deployment Manifest') {
+stage('Update manifest repo') {
   steps {
-    container('maven') {
-      withCredentials([usernamePassword(credentialsId: 'github-tokem', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+    container('gitops') {
+      withCredentials([usernamePassword(credentialsId: 'github-tokem', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
         sh '''
-          # Clone repo manifest
-          git clone https://$GIT_USER:$GIT_TOKEN@github.com/tudaolw/test-app1-deploy.git
+          git config --global user.name "jenkins"
+          git config --global user.email "jenkins@local"
+
+          # Clone repo chứa manifest
+          git clone https://${GIT_USER}:${GIT_PASS}@github.com/tudaolw/test-app1-deploy.git
           cd test-app1-deploy
 
-          # Update image tag in deployment.yaml
-          yq e '.spec.template.spec.containers[0].image = "tudaolw/test:'"$BUILD_NUMBER"'"' -i deployment.yaml
+          echo "Trước khi cập nhật:"
+          yq '.spec.template.spec.containers[0].image' deployment.yaml
 
-          # Commit and push
-          git config user.name "jenkins"
-          git config user.email "ci@example.com"
+          # Cập nhật image tag trong deployment.yaml
+          yq -i '.spec.template.spec.containers[0].image = "tudaolw/test:'"$BUILD_NUMBER"'"' deployment.yaml
+
+          echo "Sau khi cập nhật:"
+          yq '.spec.template.spec.containers[0].image' deployment.yaml
+
           git add deployment.yaml
-          git commit -m "Update image to tudaolw/test:$BUILD_NUMBER"
-          git push origin main
+          git commit -m "Update image tag to $BUILD_NUMBER"
+          git push origin master
         '''
       }
     }
