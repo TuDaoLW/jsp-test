@@ -59,7 +59,7 @@ spec:
     stage('Checkout') {
       steps {
         git credentialsId: 'github-token',
-            url: 'https://github.com/TuDaoLW/test-app1.git',
+            url: 'https://github.com/TuDaoLW/jsp-test.git',
             branch: 'master'
       }
     }
@@ -101,9 +101,9 @@ stage('Scan Image with Trivy') {
     container('trivy') {
       sh '''
         echo "skip to savetime"
-        #trivy image --timeout 15m --scanners vuln --severity CRITICAL,HIGH \
-        #  --exit-code 1 \
-        #  docker.io/$IMAGE_TAG || true
+        trivy image --timeout 15m --scanners vuln --severity CRITICAL,HIGH \
+          --exit-code 1 \
+          docker.io/$IMAGE_TAG || true
       '''
     }
   }
