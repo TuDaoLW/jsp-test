@@ -53,7 +53,7 @@ spec:
     SONAR_TOKEN = credentials('sonar-token')
     DOCKERHUB = credentials('dockerhub')
     IMAGE_TAG = "$DOCKERHUB_USR/test:${env.BUILD_NUMBER}"
-    GITOPS_REPO = 'gitops-jsp-test"
+    GITOPS_REPO = 'gitops-jsp-test'
     }
 
   stages {
