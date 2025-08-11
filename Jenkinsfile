@@ -53,6 +53,7 @@ spec:
     SONAR_TOKEN = credentials('sonar-token')
     DOCKERHUB = credentials('dockerhub')
     IMAGE_TAG = "$DOCKERHUB_USR/test:${env.BUILD_NUMBER}"
+    GITOPS_REPO = 'gitops-jsp-test"
     }
 
   stages {
@@ -101,7 +102,7 @@ stage('Scan Image with Trivy') {
     container('trivy') {
       sh '''
         echo "skip to savetime"
-        trivy image --timeout 15m --scanners vuln --severity CRITICAL,HIGH \
+        trivy image --timeout 25m --scanners vuln --severity CRITICAL,HIGH \
           --exit-code 1 \
           docker.io/$IMAGE_TAG || true
       '''
@@ -117,8 +118,8 @@ stage('Update manifest repo') {
           git config --global user.email "jenkins@local"
 
           # Clone repo chứa manifest
-          git clone https://${GIT_USER}:${GIT_PASS}@github.com/tudaolw/test-app1-deploy.git
-          cd test-app1-deploy
+          git clone https://${GIT_USER}:${GIT_PASS}@github.com/tudaolw/${GITOPS_REPO}
+          cd ${GITOPS_REPO}
 
           echo "Trước khi cập nhật:"
           yq '.spec.template.spec.containers[0].image' deployment.yaml
