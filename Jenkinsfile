@@ -66,6 +66,10 @@ pipeline {
       steps {
         container('maven') {
           sh """
+          // Debug xem pom.xml có tồn tại
+            sh "pwd"
+            sh "ls -la"
+            
             mvn clean verify sonar:sonar \\
               -DskipTests=false \\
               -Dsonar.projectKey=${SONAR_PROJECT_KEY} \\
