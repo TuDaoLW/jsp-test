@@ -121,7 +121,7 @@ stage('Build & Unit Test') {
     stage('Update manifest repo') {
       steps {
         container('gitops') {
-          withCredentials([usernamePassword(credentialsId: 'github-tokem', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
+          withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
             sh '''
               git config --global user.name "jenkins"
               git config --global user.email "jenkins@local"
