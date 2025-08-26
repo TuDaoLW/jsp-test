@@ -12,21 +12,21 @@ spec:
   containers:
     - name: maven
       image: maven:3.9.4-eclipse-temurin-17
-      command:
-        - cat
+      #command:
+      #  - cat
       tty: true
       volumeMounts:
         - name: maven-cache
           mountPath: /root/.m2
     - name: buildah
       image: quay.io/buildah/stable
-      command: ['cat']
+      #command: ['cat']
       tty: true
       securityContext:
         privileged: true
     - name: trivy
       image: aquasec/trivy:0.51.1
-      command: ['cat']
+      #command: ['cat']
       tty: true
       volumeMounts:
         - name: trivy-cache
@@ -64,26 +64,20 @@ spec:
             branch: 'master'
       }
     }
-    stage('Build') {
-      steps {
-        container('maven') {
-          sh 'mvn clean package -DskipTests'
-        }
+  stage('Build & Unit Test') {
+    steps {
+      container('maven') {
+        sh """
+          mvn clean verify sonar:sonar \
+            -DskipTests=false \
+            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+            -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+            -Dsonar.host.url=${SONAR_HOST_URL} \
+            -Dsonar.token=${SONAR_TOKEN}
+        """
       }
     }
-    stage('SonarQube Analysis') {
-      steps {
-        container('maven') {
-          sh """             
-              mvn clean verify sonar:sonar \
-                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                -Dsonar.projectName='${SONAR_PROJECT_NAME}' \
-                -Dsonar.host.url=${SONAR_HOST_URL} \
-                -Dsonar.token=${SONAR_TOKEN}
-            """
-          }
-        }
-    }
+  }
     stage('Build & Push Image (Buildah)') {
       steps {
         container('buildah') {
@@ -139,6 +133,15 @@ stage('Update manifest repo') {
   }
 }
 
+stage('Notify') {
+  steps {
+    mail to: 'dtu951@gmail.com',
+         subject: "Jenkins Build #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
+         body: "Pipeline result: ${currentBuild.currentResult}\nCheck console: ${env.BUILD_URL}"
+  }
+}
+
+    
   }
 
 }
