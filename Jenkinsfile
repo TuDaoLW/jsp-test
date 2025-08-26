@@ -12,17 +12,21 @@ pipeline {
           containers:
             - name: maven
               image: maven:3.9.4-eclipse-temurin-17
+              command:
+               - cat
               tty: true
               volumeMounts:
                 - name: maven-cache
                   mountPath: /root/.m2
             - name: buildah
               image: quay.io/buildah/stable
+              command: ['cat']
               tty: true
               securityContext:
                 privileged: true
             - name: trivy
               image: aquasec/trivy:0.51.1
+              command: ['cat']
               tty: true
               volumeMounts:
                 - name: trivy-cache
@@ -54,43 +58,28 @@ pipeline {
   }
 
   stages {
-stage('Checkout') {
-  steps {
-    checkout([
-      $class: 'GitSCM',
-      branches: [[name: '*/master']],
-      userRemoteConfigs: [[
-        url: 'https://github.com/TuDaoLW/jsp-test.git',
-        credentialsId: 'github-token'
-      ]]
-    ])
-  }
-}
-
-stage('Build & Unit Test') {
-  steps {
-    container('maven') {
-      // Debug xem pom.xml có tồn tại
-      sh "pwd"
-      sh "ls -la"
-
-      // Nếu pom.xml ở root workspace
-      sh """
-        mvn clean verify sonar:sonar \
-        -DskipTests=false \
-        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-        -Dsonar.projectName=${SONAR_PROJECT_NAME} \
-        -Dsonar.host.url=${SONAR_HOST_URL} \
-        -Dsonar.token=${SONAR_TOKEN}
-      """
-
-      // Nếu pom.xml ở subfolder 'app', dùng:
-      // dir('app') {
-      //   sh "mvn clean verify sonar:sonar -DskipTests=false -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.projectName=${SONAR_PROJECT_NAME} -Dsonar.host.url=${SONAR_HOST_URL} -Dsonar.token=${SONAR_TOKEN}"
-      // }
+    stage('Checkout') {
+      steps {
+        git credentialsId: 'github-token',
+            url: 'https://github.com/TuDaoLW/jsp-test.git',
+            branch: 'master'
+      }
     }
-  }
-}
+
+    stage('Build & Unit Test') {
+      steps {
+        container('maven') {
+          sh """
+            mvn clean verify sonar:sonar \\
+              -DskipTests=false \\
+              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \\
+              -Dsonar.projectName=${SONAR_PROJECT_NAME} \\
+              -Dsonar.host.url=${SONAR_HOST_URL} \\
+              -Dsonar.token=${SONAR_TOKEN}
+          """
+        }
+      }
+    }
 
     stage('Build & Push Image (Buildah)') {
       steps {
@@ -110,8 +99,8 @@ stage('Build & Unit Test') {
         container('trivy') {
           sh '''
             echo "skip to savetime"
-            trivy image --timeout 25m --scanners vuln --severity CRITICAL,HIGH \
-              --exit-code 1 \
+            trivy image --timeout 25m --scanners vuln --severity CRITICAL,HIGH \\
+              --exit-code 1 \\
               docker.io/$IMAGE_TAG || true
           '''
         }
