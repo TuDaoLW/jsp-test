@@ -70,11 +70,11 @@ pipeline {
             sh "pwd"
             sh "ls -la"
             
-            mvn clean verify sonar:sonar \\
-              -DskipTests=false \\
-              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \\
-              -Dsonar.projectName=${SONAR_PROJECT_NAME} \\
-              -Dsonar.host.url=${SONAR_HOST_URL} \\
+            mvn clean verify sonar:sonar \
+              -DskipTests=false \
+              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+              -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+              -Dsonar.host.url=${SONAR_HOST_URL} \
               -Dsonar.token=${SONAR_TOKEN}
           """
         }
@@ -99,8 +99,8 @@ pipeline {
         container('trivy') {
           sh '''
             echo "skip to savetime"
-            trivy image --timeout 25m --scanners vuln --severity CRITICAL,HIGH \\
-              --exit-code 1 \\
+            trivy image --timeout 25m --scanners vuln --severity CRITICAL,HIGH \
+              --exit-code 1 \
               docker.io/$IMAGE_TAG || true
           '''
         }
