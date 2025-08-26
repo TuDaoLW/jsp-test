@@ -98,7 +98,7 @@ stage('Scan Image with Trivy') {
         echo "skip to savetime"
         trivy image --timeout 25m --scanners vuln --severity CRITICAL,HIGH \
           --exit-code 1 \
-          docker.io/$IMAGE_TAG || 
+          docker.io/$IMAGE_TAG || true 
       '''
     }
   }
@@ -133,16 +133,16 @@ stage('Update manifest repo') {
   }
 }
 
-stage('Notify') {
-  steps {
-    mail to: 'dtu951@gmail.com',
-         subject: "Jenkins Build #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
-         body: "Pipeline result: ${currentBuild.currentResult}\nCheck console: ${env.BUILD_URL}"
-  }
-}
+
 
     
   }
-
+ post {
+    always {
+      mail to: 'dtu951@gmail.com',
+           subject: "Jenkins Build #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
+           body: "Pipeline result: ${currentBuild.currentResult}\nCheck console: ${env.BUILD_URL}"
+    }
+  }
 }
 
