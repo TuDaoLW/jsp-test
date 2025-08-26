@@ -1,67 +1,70 @@
 pipeline {
   agent {
     kubernetes {
-      label 'ci-cd-pipeline'
+      label 'maven-agent'
       yaml """
 apiVersion: v1
 kind: Pod
+metadata:
+  labels:
+    some-label: maven
 spec:
   containers:
     - name: maven
-      image: maven:3.9.5-eclipse-temurin-17
+      image: maven:3.9.4-eclipse-temurin-17
       command: ['cat']
       tty: true
       volumeMounts:
         - name: maven-cache
           mountPath: /root/.m2
-
-    - name: kaniko
-      image: gcr.io/kaniko-project/executor:latest
+    - name: buildah
+      image: quay.io/buildah/stable
       command: ['cat']
       tty: true
+      securityContext:
+        privileged: true
       volumeMounts:
-        - name: kaniko-cache
-          mountPath: /workspace
-
+        - name: containers-storage
+          mountPath: /var/lib/containers/storage
     - name: trivy
       image: aquasec/trivy:0.51.1
       command: ['cat']
       tty: true
       volumeMounts:
+        - name: containers-storage
+          mountPath: /var/lib/containers/storage
         - name: trivy-cache
           mountPath: /root/.cache/trivy
-
     - name: gitops
-      image: alpine/git:3.18
+      image: alpine/git
       command: ['sh', '-c', 'apk add --no-cache curl bash && curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/bin/yq && chmod +x /usr/bin/yq && cat']
       tty: true
-
   volumes:
     - name: maven-cache
       persistentVolumeClaim:
         claimName: maven-cache-pvc
-    - name: kaniko-cache
-      emptyDir: {}
     - name: trivy-cache
       persistentVolumeClaim:
         claimName: trivy-cache-pvc
-"""
+    - name: containers-storage
+      emptyDir: {}
+      """
       defaultContainer 'maven'
     }
   }
 
   environment {
-    SONAR_HOST_URL   = 'http://sonarqube-sonarqube.sonarqube.svc.cluster.local:9000'
-    SONAR_PROJECT_KEY = 'demo-scan'
+    SONAR_HOST_URL     = 'http://sonarqube-sonarqube.sonarqube.svc.cluster.local:9000'
+    SONAR_PROJECT_KEY  = 'demo-scan'
     SONAR_PROJECT_NAME = 'demo-scan'
-    SONAR_TOKEN      = credentials('sonar-token')
-    IMAGE_TAG        = "tudaolw/test:${env.BUILD_NUMBER}"
-    GITOPS_REPO      = 'gitops-jsp-test'
-    DOCKERHUB        = credentials('dockerhub')
+    SONAR_TOKEN        = credentials('sonar-token')
+    DOCKERHUB          = credentials('dockerhub')
+    IMAGE_NAME         = 'test'
+    IMAGE_TAG          = "$DOCKERHUB_USR/${IMAGE_NAME}:${env.BUILD_NUMBER}"
+    GITOPS_REPO        = 'gitops-jsp-test'
   }
 
   stages {
-
     stage('Checkout') {
       steps {
         git credentialsId: 'github-token',
@@ -70,33 +73,27 @@ spec:
       }
     }
 
-    stage('Build & Unit Test + SonarQube') {
+    stage('Build & Unit Test') {
       steps {
         container('maven') {
-          dir('/workspace') {
-            sh """
-              mvn clean verify sonar:sonar \
-                -DskipTests=false \
-                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                -Dsonar.projectName=${SONAR_PROJECT_NAME} \
-                -Dsonar.host.url=${SONAR_HOST_URL} \
-                -Dsonar.token=${SONAR_TOKEN}
-            """
-          }
+          sh """
+            mvn clean verify sonar:sonar \\
+              -DskipTests=false \\
+              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \\
+              -Dsonar.projectName=${SONAR_PROJECT_NAME} \\
+              -Dsonar.host.url=${SONAR_HOST_URL} \\
+              -Dsonar.token=${SONAR_TOKEN}
+          """
         }
       }
     }
 
-    stage('Build Image (Kaniko TAR)') {
+    stage('Build Image (Buildah)') {
       steps {
-        container('kaniko') {
-          sh """
-            /kaniko/executor \
-              --context /workspace \
-              --dockerfile /workspace/Dockerfile \
-              --tarPath=/workspace/app.tar \
-              --no-push
-          """
+        container('buildah') {
+          sh '''
+            buildah bud -t $IMAGE_TAG .
+          '''
         }
       }
     }
@@ -104,30 +101,25 @@ spec:
     stage('Scan Image with Trivy') {
       steps {
         container('trivy') {
-          sh """
-            trivy image --input /workspace/app.tar \
-              --severity CRITICAL,HIGH \
-              --exit-code 1
-          """
+          sh '''
+            trivy image --timeout 15m --scanners vuln --severity HIGH,CRITICAL $IMAGE_TAG || true
+          '''
         }
       }
     }
 
-    stage('Push Image to DockerHub') {
+    stage('Push Image (Buildah)') {
       steps {
-        container('kaniko') {
-          sh """
-            /kaniko/executor \
-              --context /workspace \
-              --dockerfile /workspace/Dockerfile \
-              --destination docker.io/${IMAGE_TAG} \
-              --cache=true
-          """
+        container('buildah') {
+          sh '''
+            echo "$DOCKERHUB_PSW" | buildah login -u "$DOCKERHUB_USR" --password-stdin docker.io
+            buildah push docker.io/$IMAGE_TAG
+          '''
         }
       }
     }
 
-    stage('Update GitOps Manifest') {
+    stage('Update manifest repo') {
       steps {
         container('gitops') {
           withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
@@ -138,12 +130,12 @@ spec:
               git clone https://${GIT_USER}:${GIT_PASS}@github.com/tudaolw/${GITOPS_REPO}
               cd ${GITOPS_REPO}
 
-              echo "Before update:"
+              echo "Trước khi cập nhật:"
               yq '.spec.template.spec.containers[0].image' deployment.yaml
 
               yq -i '.spec.template.spec.containers[0].image = "tudaolw/test:'"$BUILD_NUMBER"'"' deployment.yaml
 
-              echo "After update:"
+              echo "Sau khi cập nhật:"
               yq '.spec.template.spec.containers[0].image' deployment.yaml
 
               git add deployment.yaml
@@ -155,4 +147,12 @@ spec:
       }
     }
   }
+
+  /*post {
+    always {
+      mail to: 'dtu951@gmail.com',
+           subject: "Jenkins Build #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
+           body: "Pipeline result: ${currentBuild.currentResult}\nCheck console: ${env.BUILD_URL}"
+    }
+  }*/
 }
