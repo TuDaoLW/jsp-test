@@ -8,7 +8,7 @@ kind: Pod
 spec:
   containers:
     - name: maven
-      image: maven:3.9.4-eclipse-temurin-17
+      image: maven:3.9.5-eclipse-temurin-17
       command: ['cat']
       tty: true
       volumeMounts:
@@ -17,8 +17,7 @@ spec:
 
     - name: kaniko
       image: gcr.io/kaniko-project/executor:latest
-      command: ["/busybox/sh"]
-      args: ["-c", "sleep infinity"]
+      command: ['cat']
       tty: true
       volumeMounts:
         - name: kaniko-cache
@@ -33,7 +32,7 @@ spec:
           mountPath: /root/.cache/trivy
 
     - name: gitops
-      image: alpine/git
+      image: alpine/git:3.18
       command: ['sh', '-c', 'apk add --no-cache curl bash && curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/bin/yq && chmod +x /usr/bin/yq && cat']
       tty: true
 
@@ -56,9 +55,9 @@ spec:
     SONAR_PROJECT_KEY = 'demo-scan'
     SONAR_PROJECT_NAME = 'demo-scan'
     SONAR_TOKEN      = credentials('sonar-token')
-    DOCKERHUB        = credentials('dockerhub')
     IMAGE_TAG        = "tudaolw/test:${env.BUILD_NUMBER}"
     GITOPS_REPO      = 'gitops-jsp-test'
+    DOCKERHUB        = credentials('dockerhub')
   }
 
   stages {
@@ -114,7 +113,7 @@ spec:
       }
     }
 
-    stage('Push Image (Kaniko)') {
+    stage('Push Image to DockerHub') {
       steps {
         container('kaniko') {
           sh """
@@ -122,8 +121,7 @@ spec:
               --context /workspace \
               --dockerfile /workspace/Dockerfile \
               --destination docker.io/${IMAGE_TAG} \
-              --cache=true \
-              --skip-tls-verify
+              --cache=true
           """
         }
       }
@@ -155,14 +153,6 @@ spec:
           }
         }
       }
-    }
-  }
-
-  post {
-    always {
-      mail to: 'dtu951@gmail.com',
-           subject: "Jenkins Build #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
-           body: "Pipeline result: ${currentBuild.currentResult}\nCheck console: ${env.BUILD_URL}"
     }
   }
 }
