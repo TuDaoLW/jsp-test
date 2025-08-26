@@ -54,32 +54,43 @@ pipeline {
   }
 
   stages {
-    stage('Checkout') {
-      steps {
-        git credentialsId: 'github-token',
-            url: 'https://github.com/TuDaoLW/jsp-test.git',
-            branch: 'master'
-      }
-    }
+stage('Checkout') {
+  steps {
+    checkout([
+      $class: 'GitSCM',
+      branches: [[name: '*/master']],
+      userRemoteConfigs: [[
+        url: 'https://github.com/TuDaoLW/jsp-test.git',
+        credentialsId: 'github-token'
+      ]]
+    ])
+  }
+}
 
-    stage('Build & Unit Test') {
-      steps {
-        container('maven') {
-          sh """
-          // Debug xem pom.xml có tồn tại
-            sh "pwd"
-            sh "ls -la"
-            
-            mvn clean verify sonar:sonar \
-              -DskipTests=false \
-              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-              -Dsonar.projectName=${SONAR_PROJECT_NAME} \
-              -Dsonar.host.url=${SONAR_HOST_URL} \
-              -Dsonar.token=${SONAR_TOKEN}
-          """
-        }
-      }
+stage('Build & Unit Test') {
+  steps {
+    container('maven') {
+      // Debug xem pom.xml có tồn tại
+      sh "pwd"
+      sh "ls -la"
+
+      // Nếu pom.xml ở root workspace
+      sh """
+        mvn clean verify sonar:sonar \
+        -DskipTests=false \
+        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+        -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+        -Dsonar.host.url=${SONAR_HOST_URL} \
+        -Dsonar.token=${SONAR_TOKEN}
+      """
+
+      // Nếu pom.xml ở subfolder 'app', dùng:
+      // dir('app') {
+      //   sh "mvn clean verify sonar:sonar -DskipTests=false -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.projectName=${SONAR_PROJECT_NAME} -Dsonar.host.url=${SONAR_HOST_URL} -Dsonar.token=${SONAR_TOKEN}"
+      // }
     }
+  }
+}
 
     stage('Build & Push Image (Buildah)') {
       steps {
