@@ -132,11 +132,11 @@ pipeline {
     }
   }
 
-  post {
+  /*post {
     always {
       mail to: 'dtu951@gmail.com',
            subject: "Jenkins Build #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
            body: "Pipeline result: ${currentBuild.currentResult}\nCheck console: ${env.BUILD_URL}"
     }
-  }
+  }*/
 }
