@@ -100,7 +100,7 @@ spec:
           sh '''
             # Build image và xuất ra file tar để scan local
             buildah bud -t $IMAGE_TAG .
-            buildah push $IMAGE_TAG oci-archive:/tmp/image.tar
+            buildah push --format docker $IMAGE_TAG docker-archive:/tmp/image.tar
           '''
         }
       }
@@ -110,6 +110,7 @@ spec:
       steps {
         container('trivy') {
           sh '''
+            ls -l /tmp
             # Scan file tar local trước khi ship lên registry
             trivy image \
               --input /tmp/image.tar \
