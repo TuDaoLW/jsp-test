@@ -66,7 +66,6 @@ spec:
     SONAR_TOKEN        = credentials('sonar-token')
     DOCKERHUB          = credentials('dockerhub')
     IMAGE_NAME         = 'test'
-    IMAGE_TAG          = "$DOCKERHUB_USR/${IMAGE_NAME}:${env.BUILD_NUMBER}"
     GITOPS_REPO        = 'gitops-jsp-test'
   }
 
@@ -76,6 +75,17 @@ spec:
         git credentialsId: 'github-token',
             url: 'https://github.com/TuDaoLW/jsp-test.git',
             branch: 'master'
+        script {
+          // Lấy short SHA
+          def sha = sh(
+            script: 'git rev-parse --short HEAD',
+            returnStdout: true
+          ).trim()
+          // Gán cho env biến để các stage sau dùng chung
+          env.COMMIT_HASH = sha
+          env.IMAGE_TAG   = "${DOCKERHUB_USR}/${IMAGE_NAME}:${sha}"
+          echo " Using IMAGE_TAG = ${env.IMAGE_TAG}"
+        }
       }
     }
 
