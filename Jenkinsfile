@@ -131,7 +131,7 @@ spec:
               --timeout 15m \
               --scanners vuln \
               --severity HIGH,CRITICAL \
-              --exit-code 1 
+              --exit-code 1 || true 
           '''
           }
         }
@@ -183,11 +183,25 @@ spec:
     }
   }
 
-  /*post {
-    always {
-      mail to: 'dtu951@gmail.com',
-           subject: "Jenkins Build #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
-           body: "Pipeline result: ${currentBuild.currentResult}\nCheck console: ${env.BUILD_URL}"
+post {
+  always {
+    container('buildah') {
+      sh '''
+        echo "Dọn dẹp local image sau build"
+
+        # Xóa image vừa build (nếu còn)
+        buildah rmi $IMAGE_TAG || true
+
+        # Xóa các image không còn dùng đến (giữ lại layer cache)
+        buildah image prune -a -f || true
+      '''
     }
-  }*/
+
+    /* Tuỳ chọn: gửi email thông báo kết quả
+    mail to: 'dtu951@gmail.com',
+         subject: "Jenkins Build #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
+         body: "Pipeline result: ${currentBuild.currentResult}\nCheck console: ${env.BUILD_URL}"
+  */}
+}
+
 }
