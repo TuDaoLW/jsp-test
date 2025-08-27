@@ -76,7 +76,8 @@ spec:
             url: 'https://github.com/TuDaoLW/jsp-test.git',
             branch: 'master'
         script {
-          // Lấy short SHA
+          sh 'git config --global --add safe.directory /home/jenkins/agent/workspace/test-pipeline'
+          // fix ownership, Lấy short SHA
           def sha = sh(
             script: 'git rev-parse --short HEAD',
             returnStdout: true
@@ -109,7 +110,7 @@ spec:
         container('buildah') {
           sh '''
             # Build image và xuất ra file tar để scan local
-            buildah bud -t $IMAGE_TAG .
+            buildah bud -t $IMAGE_TAG . --layers
             buildah push --format docker $IMAGE_TAG docker-archive:/tmp/image.tar
           '''
         }
@@ -119,16 +120,19 @@ spec:
     stage('Scan Image with Trivy') {
       steps {
         container('trivy') {
+          catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE'){
           sh '''
             ls -l /tmp
             # Scan file tar local trước khi ship lên registry
             trivy image \
+              --cache-dir /root/.cache/trivy \
               --input /tmp/image.tar \
               --timeout 15m \
               --scanners vuln \
               --severity HIGH,CRITICAL \
-              --exit-code 1 || true 
+              --exit-code 1 
           '''
+          }
         }
       }
     }
