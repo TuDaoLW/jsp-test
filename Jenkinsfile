@@ -26,15 +26,19 @@ spec:
       volumeMounts:
         - name: containers-storage
           mountPath: /var/lib/containers/storage
+        - name: image-tar
+          mountPath: /tmp            
+          
     - name: trivy
       image: aquasec/trivy:0.51.1
       command: ['cat']
       tty: true
       volumeMounts:
-        - name: containers-storage
-          mountPath: /var/lib/containers/storage
+        - name: image-tar
+          mountPath: /tmp            
         - name: trivy-cache
           mountPath: /root/.cache/trivy
+          
     - name: gitops
       image: alpine/git
       command: ['sh', '-c', 'apk add --no-cache curl bash && curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/bin/yq && chmod +x /usr/bin/yq && cat']
@@ -48,6 +52,8 @@ spec:
         claimName: trivy-cache-pvc
     - name: containers-storage
       emptyDir: {}
+    - name: image-tar
+      emptyDir: {} 
       """
       defaultContainer 'maven'
     }
@@ -92,7 +98,9 @@ spec:
       steps {
         container('buildah') {
           sh '''
+            # Build image và xuất ra file tar để scan local
             buildah bud -t $IMAGE_TAG .
+            buildah push $IMAGE_TAG oci-archive:/tmp/image.tar
           '''
         }
       }
@@ -102,23 +110,34 @@ spec:
       steps {
         container('trivy') {
           sh '''
-            trivy image --timeout 15m --scanners vuln --severity HIGH,CRITICAL $IMAGE_TAG || true
+            # Scan file tar local trước khi ship lên registry
+            trivy image \
+              --input /tmp/image.tar \
+              --timeout 15m \
+              --scanners vuln \
+              --severity HIGH,CRITICAL \
+              --exit-code 1
           '''
         }
       }
     }
 
     stage('Push Image (Buildah)') {
+      when {
+        // Chạy chỉ khi scan exit code = 0
+        expression { currentBuild.currentResult == 'SUCCESS' }
+      }
       steps {
         container('buildah') {
           sh '''
+            # Đăng nhập và push image thật lên Docker Hub
             echo "$DOCKERHUB_PSW" | buildah login -u "$DOCKERHUB_USR" --password-stdin docker.io
             buildah push docker.io/$IMAGE_TAG
           '''
         }
       }
     }
-
+    
     stage('Update manifest repo') {
       steps {
         container('gitops') {
