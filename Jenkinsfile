@@ -191,9 +191,6 @@ post {
 
         # Xóa image vừa build (nếu còn)
         buildah rmi $IMAGE_TAG || true
-
-        # Xóa các image không còn dùng đến (giữ lại layer cache)
-        buildah rmi $(buildah images -q) || true
       '''
     }
 
