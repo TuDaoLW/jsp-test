@@ -110,7 +110,7 @@ spec:
         container('buildah') {
           sh '''
             # Build image và xuất ra file tar để scan local
-            buildah bud -t $IMAGE_TAG . --layers
+            buildah bud --layers -t $IMAGE_TAG . 
             buildah push --format docker $IMAGE_TAG docker-archive:/tmp/image.tar
           '''
         }
