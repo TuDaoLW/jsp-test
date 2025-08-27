@@ -148,7 +148,7 @@ spec:
           sh '''
             # Đăng nhập và push image thật lên Docker Hub
             echo "$DOCKERHUB_PSW" | buildah login -u "$DOCKERHUB_USR" --password-stdin docker.io
-            buildah push docker.io/$IMAGE_TAG
+            buildah push docker//$IMAGE_TAG
           '''
         }
       }
@@ -193,7 +193,7 @@ post {
         buildah rmi $IMAGE_TAG || true
 
         # Xóa các image không còn dùng đến (giữ lại layer cache)
-        buildah image prune -a -f || true
+        buildah rmi $(buildah images -q) || true
       '''
     }
 
