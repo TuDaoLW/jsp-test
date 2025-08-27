@@ -111,7 +111,7 @@ spec:
         container('buildah') {
           sh '''
             # Build image và xuất ra file tar để scan local
-            buildah bud --layers -t $IMAGE_TAG . 
+            buildah bud --layers -t docker.io/$IMAGE_TAG . 
             buildah push --format docker $IMAGE_TAG docker-archive:/tmp/image.tar
           '''
         }
@@ -148,7 +148,7 @@ spec:
           sh '''
             # Đăng nhập và push image thật lên Docker Hub
             echo "$DOCKERHUB_PSW" | buildah login -u "$DOCKERHUB_USR" --password-stdin docker.io
-            buildah push docker//$IMAGE_TAG
+            buildah push docker.io/$IMAGE_TAG
           '''
         }
       }
