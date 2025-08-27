@@ -51,7 +51,8 @@ spec:
       persistentVolumeClaim:
         claimName: trivy-cache-pvc
     - name: containers-storage
-      emptyDir: {}
+      persistentVolumeClaim:
+        claimName: buildha-cache
     - name: image-tar
       emptyDir: {} 
       """
