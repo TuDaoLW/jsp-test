@@ -168,13 +168,13 @@ spec:
               echo "Trước khi cập nhật:"
               yq '.spec.template.spec.containers[0].image' deployment.yaml
 
-              yq -i '.spec.template.spec.containers[0].image = "tudaolw/test:'"$BUILD_NUMBER"'"' deployment.yaml
+              yq -i '.spec.template.spec.containers[0].image = "'"$IMAGE_TAG"'"' deployment.yaml
 
               echo "Sau khi cập nhật:"
               yq '.spec.template.spec.containers[0].image' deployment.yaml
 
               git add deployment.yaml
-              git commit -m "Update image tag to $BUILD_NUMBER"
+              git commit -m "Update image tag to $IMAGE_TAG"
               git push origin main
             '''
           }
