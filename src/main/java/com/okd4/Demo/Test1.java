@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class Test1 {
 	@GetMapping("/hello")
 	public String hello_func() {
-		return "hello v3 aug 25th check polling work?";
+		return "podtemplate success!";
 	}
 }
