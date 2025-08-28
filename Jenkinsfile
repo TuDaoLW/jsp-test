@@ -2,7 +2,7 @@ pipeline {
   agent {
     kubernetes {
       label 'maven-agent'
-      yaml readFile('podTemplate.yaml')
+      yamlFile 'podTemplate.yaml'
       defaultContainer 'maven'
     }
   }
