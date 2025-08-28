@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    some-label: maven
+spec:
+  containers:
+    - name: maven
+      image: maven:3.9.4-eclipse-temurin-17
+      command: ['cat']
+      tty: true
+      volumeMounts:
+        - name: maven-cache
+          mountPath: /root/.m2
+    - name: buildah
+      image: quay.io/buildah/stable
+      command: ['cat']
+      tty: true
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: containers-storage
+          mountPath: /var/lib/containers/storage
+        - name: image-tar
+          mountPath: /tmp            
+          
+    - name: trivy
+      image: aquasec/trivy:0.51.1
+      command: ['cat']
+      tty: true
+      volumeMounts:
+        - name: image-tar
+          mountPath: /tmp            
+        - name: trivy-cache
+          mountPath: /root/.cache/trivy
+          
+    - name: gitops
+      image: alpine/git
+      command: ['sh', '-c', 'apk add --no-cache curl bash && curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/bin/yq && chmod +x /usr/bin/yq && cat']
+      tty: true
+  volumes:
+    - name: maven-cache
+      persistentVolumeClaim:
+        claimName: maven-cache-pvc
+    - name: trivy-cache
+      persistentVolumeClaim:
+        claimName: trivy-cache-pvc
+    - name: containers-storage
+      persistentVolumeClaim:
+        claimName: buildha-cache
+    - name: image-tar
+      emptyDir: {} 
