@@ -5,8 +5,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class Test1 {
-	@GetMapping("/hello")
+	@GetMapping("/")
 	public String hello_func() {
-		return "podtemplate success!";
+		return "nhà còn mỗi cái máng lợn";
 	}
 }
